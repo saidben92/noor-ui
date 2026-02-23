@@ -1,16 +1,23 @@
 <script type="module">
     import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js"
+
     Chatbot.initFull({
         chatflowid: "18d7b8e4-c497-4dfa-8610-bc0cac7762ad",
         apiHost: "https://noor-flowise-cloud-production.up.railway.app",
+
         theme: {
             chatWindow: {
                 showTitle: true,
-                title: "Noor v5.1-Gold",
-                welcomeMessage: "Assalamu Alaikum. Ask Noor a question about Qur’an, tafsir, or classical Islamic thought.",
+                title: "Noot_Testpilot_Feb26",
+                welcomeMessage: "Welcome to Noor. Ask what’s on your mind.",
                 backgroundColor: "#f7f5f2",
                 fontSize: 16,
-                feedback: { color: '#1e3a34' },
+
+                feedback: {
+                    enabled: true,
+                    color: "#1e3a34"
+                },
+
                 starterPrompts: [
                     "What practice today could help soften my heart toward gratitude (shukr)?",
                     "How do I understand 'disease in the heart' (2:10)?",
@@ -18,27 +25,35 @@
                 ]
             }
         },
+
         observersConfig: {
             observeMessages: (messages) => {
                 const lastMessage = messages[messages.length - 1];
-                // Check if the message is from the AI and has a feedback rating
-                if (lastMessage.type === 'apiMessage' && lastMessage.feedback) {
+
+                // Only trigger when AI message receives feedback
+                if (
+                    lastMessage &&
+                    lastMessage.type === "apiMessage" &&
+                    lastMessage.feedback
+                ) {
                     const feedbackData = {
                         question: messages[messages.length - 2]?.content || "Unknown",
                         answer: lastMessage.content,
-                        rating: lastMessage.feedback.rating === 'thumbsUp' ? 1 : -1,
+                        rating: lastMessage.feedback.rating === "thumbsUp" ? 1 : -1,
                         comment: lastMessage.feedback.comment || "",
-                        trace_id: lastMessage.id // This is the Flowise Message ID
+                        trace_id: lastMessage.id || ""
                     };
 
-                    // Send to your Google Sheet
                     fetch("https://script.google.com/macros/s/AKfycbwN1qCu8cl4yb_fc9-2e0-vgbTWkfmPNuW7JFEePF9MwgSd24592cWkauwVh3eMWy1XnQ/exec", {
                         method: "POST",
-                        mode: "no-cors", // Essential for Google Apps Script
+                        mode: "no-cors",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
                         body: JSON.stringify(feedbackData)
                     });
                 }
             }
         }
-    })
+    });
 </script>
