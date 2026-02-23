@@ -26,34 +26,38 @@
             }
         },
 
-        observersConfig: {
-            observeMessages: (messages) => {
-                const lastMessage = messages[messages.length - 1];
+      observersConfig: {
+    observeMessages: (messages) => {
+        const lastMessage = messages[messages.length - 1];
 
-                // Only trigger when AI message receives feedback
-                if (
-                    lastMessage &&
-                    lastMessage.type === "apiMessage" &&
-                    lastMessage.feedback
-                ) {
-                    const feedbackData = {
-                        question: messages[messages.length - 2]?.content || "Unknown",
-                        answer: lastMessage.content,
-                        rating: lastMessage.feedback.rating === "thumbsUp" ? 1 : -1,
-                        comment: lastMessage.feedback.comment || "",
-                        trace_id: lastMessage.id || ""
-                    };
+        if (
+            lastMessage &&
+            lastMessage.type === "apiMessage" &&
+            lastMessage.feedback
+        ) {
 
-                    fetch("https://script.google.com/macros/s/AKfycbwN1qCu8cl4yb_fc9-2e0-vgbTWkfmPNuW7JFEePF9MwgSd24592cWkauwVh3eMWy1XnQ/exec", {
-                        method: "POST",
-                        mode: "no-cors",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify(feedbackData)
-                    });
-                }
-            }
+            // Find the most recent user message
+            const userMessage = [...messages]
+                .reverse()
+                .find(msg => msg.type === "userMessage");
+
+            const feedbackData = {
+                question: userMessage?.content || "Not found",
+                answer: lastMessage.content || "",
+                rating: lastMessage.feedback.rating === "thumbsUp" ? 1 : -1,
+                comment: lastMessage.feedback.comment || "",
+                trace_id: lastMessage.id || ""
+            };
+
+            fetch("https://script.google.com/macros/s/AKfycbwN1qCu8cl4yb_fc9-2e0-vgbTWkfmPNuW7JFEePF9MwgSd24592cWkauwVh3eMWy1XnQ/exec", {
+                method: "POST",
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(feedbackData)
+            });
         }
-    });
+    }
+});
 </script>
