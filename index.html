@@ -94,38 +94,42 @@
 <script type="module">
     import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed@latest/dist/web.js";
 
-    // YOUR ACTUAL ENDPOINT
     const SHEETS_URL = "https://script.google.com/macros/s/AKfycbwN1qCu8cl4yb_fc9-2e0-vgbTWkfmPNuW7JFEePF9MwgSd24592cWkauwVh3eMWy1XnQ/exec";
     
-    let lastData = { question: "", answer: "", id: "" };
+    // This object stores the current state
+    let sessionState = {
+        currentQuestion: "",
+        currentAnswer: "",
+        currentTraceId: ""
+    };
 
     Chatbot.initFull({
         chatflowid: "18d7b8e4-c497-4dfa-8610-bc0cac7762ad",
         apiHost: "https://noor-flowise-cloud-production.up.railway.app",
         theme: {
             chatWindow: {
-                showTitle: false, // We use the sidebar for the title
+                showTitle: false,
                 backgroundColor: "#f7f5f2",
-                welcomeMessage: "Assalamu Alaikum. How can I assist your study today?"
             }
         },
         observersConfig: {
             observeMessages: (messages) => {
-                const last = messages[messages.length - 1];
-                if (!last) return;
+                const userMsgs = messages.filter(m => m.type === "userMessage");
+                const apiMsgs = messages.filter(m => m.type === "apiMessage");
 
-                if (last.type === "userMessage") {
-                    lastData.question = last.content;
-                    document.getElementById("current-q").innerText = "\"" + last.content + "\"";
-                    document.getElementById("status-pill").innerText = "Noor is thinking...";
-                    document.getElementById("status-pill").style.background = "#fff3cd";
-                    document.getElementById("controls").style.display = "none";
+                // Grab the absolute latest pair
+                if (userMsgs.length > 0) {
+                    sessionState.currentQuestion = userMsgs[userMsgs.length - 1].content;
+                    document.getElementById("current-q").innerText = "\"" + sessionState.currentQuestion + "\"";
                 }
 
-                if (last.type === "apiMessage") {
-                    lastData.answer = last.content;
-                    lastData.id = last.id;
-                    document.getElementById("status-pill").innerText = "Please rate this answer:";
+                if (apiMsgs.length > 0) {
+                    const lastApi = apiMsgs[apiMsgs.length - 1];
+                    sessionState.currentAnswer = lastApi.content;
+                    sessionState.currentTraceId = lastApi.id;
+                    
+                    // Reveal controls
+                    document.getElementById("status-pill").innerText = "Ready for feedback";
                     document.getElementById("status-pill").style.background = "#c6f6d5";
                     document.getElementById("controls").style.display = "block";
                 }
@@ -134,38 +138,36 @@
     });
 
     window.submitRating = async (val) => {
-        const comment = prompt("Optional: What could be better?") || "";
+        const comment = prompt("Optional: Why this rating?") || "";
         
-        // Prepare the data for your Google Sheet
+        // Final check: if question is missing, try to find it in the DOM as a fallback
+        const qToSend = sessionState.currentQuestion || "Question text not captured";
+        const aToSend = sessionState.currentAnswer || "Answer text not captured";
+
         const payload = {
-            question: lastData.question,
-            answer: lastData.answer,
+            question: qToSend,
+            answer: aToSend,
             rating: val,
             comment: comment,
-            trace_id: lastData.id
+            trace_id: sessionState.currentTraceId
         };
 
-        // UI Updates
         document.getElementById("controls").style.display = "none";
-        document.getElementById("status-pill").innerText = "Saving to Sheets...";
+        document.getElementById("status-pill").innerText = "Sending Data...";
 
         try {
-            // Using the 'no-cors' mode as required by Google Apps Script web apps
             await fetch(SHEETS_URL, {
                 method: "POST",
                 mode: "no-cors", 
-                headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
             });
-            
             document.getElementById("status-pill").innerText = "Feedback Saved!";
             document.getElementById("status-pill").style.background = "#bee3f8";
         } catch (e) {
-            console.error("Feedback Error:", e);
-            document.getElementById("status-pill").innerText = "Error saving.";
+            document.getElementById("status-pill").innerText = "Error!";
         }
     };
 </script>
-
+    
 </body>
 </html>
