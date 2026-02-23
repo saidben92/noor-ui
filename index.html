@@ -1,175 +1,47 @@
+<div id="feedback-sidebar">
+  <h3>Pilot Feedback</h3>
+  <p id="status-text">Waiting for Noor's response...</p>
+  <div id="feedback-controls" style="display:none;">
+    <button onclick="sendFeedback(1)">👍 Helpful</button>
+    <button onclick="sendFeedback(-1)">👎 Unhelpful</button>
+  </div>
+</div>
+
 <script type="module">
   import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed@latest/dist/web.js";
 
-  const SHEETS_ENDPOINT =
-    "https://script.google.com/macros/s/AKfycbwN1qCu8cl4yb_fc9-2e0-vgbTWkfmPNuW7JFEePF9MwgSd24592cWkauwVh3eMWy1XnQ/exec";
-
-  // Track the latest user question so feedback can reference it
-  let latestUserQuestion = "";
-
-  // Add minimal CSS once
-  function injectFeedbackStylesOnce() {
-    if (document.getElementById("noot-feedback-style")) return;
-    const style = document.createElement("style");
-    style.id = "noot-feedback-style";
-    style.textContent = `
-      .noot-feedback-bar{
-        margin-top: 10px;
-        display:flex;
-        gap:10px;
-        align-items:center;
-      }
-      .noot-feedback-btn{
-        border: 1px solid rgba(0,0,0,.14);
-        background: #fff;
-        padding: 6px 10px;
-        border-radius: 999px;
-        cursor: pointer;
-        font-size: 13px;
-        line-height: 1;
-      }
-      .noot-feedback-btn:hover{
-        background: rgba(0,0,0,.04);
-      }
-      .noot-feedback-note{
-        font-size: 12px;
-        opacity: .65;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  // Best-effort: find the last assistant message element in the embedded UI DOM
-  function findLastAssistantTextElement() {
-    // This is heuristic because flowise-embed owns the DOM structure.
-    // We look for large text blocks near the bottom of the chat.
-    const candidates = Array.from(document.querySelectorAll("div, p, span"));
-
-    for (let i = candidates.length - 1; i >= 0; i--) {
-      const el = candidates[i];
-      const txt = (el.textContent || "").trim();
-
-      if (!txt) continue;
-
-      // avoid UI strings
-      if (txt.toLowerCase().includes("powered by flowise")) continue;
-      if (txt.toLowerCase().includes("type your question")) continue;
-
-      // avoid starter prompt buttons text becoming the match
-      if (txt === "test" || txt === "test2") continue;
-
-      // likely assistant content: longer than a short label
-      if (txt.length > 60) return el;
-    }
-    return null;
-  }
-
-  // Attach feedback bar under the last assistant answer (once)
-  function attachFeedbackBar({ answerText, traceId }) {
-    injectFeedbackStylesOnce();
-
-    const lastTextEl = findLastAssistantTextElement();
-    if (!lastTextEl) return;
-
-    // prevent duplicates on the same message
-    const parent = lastTextEl.parentElement || lastTextEl;
-    if (parent.querySelector(".noot-feedback-bar")) return;
-
-    const bar = document.createElement("div");
-    bar.className = "noot-feedback-bar";
-
-    const up = document.createElement("button");
-    up.className = "noot-feedback-btn";
-    up.textContent = "👍 Helpful";
-
-    const down = document.createElement("button");
-    down.className = "noot-feedback-btn";
-    down.textContent = "👎 Not helpful";
-
-    const note = document.createElement("span");
-    note.className = "noot-feedback-note";
-    note.textContent = "Optional: add a short comment after clicking.";
-
-    const send = (rating) => {
-      const comment = window.prompt("Optional comment (leave blank to skip):", "") || "";
-
-      const payload = {
-        question: latestUserQuestion || "Not found",
-        answer: answerText || "",
-        rating, // 1 or -1
-        comment,
-        trace_id: traceId || ""
-      };
-
-      fetch(SHEETS_ENDPOINT, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      // Light visual acknowledgement (no alerts)
-      note.textContent = "Thanks — feedback saved.";
-    };
-
-    up.onclick = () => send(1);
-    down.onclick = () => send(-1);
-
-    bar.appendChild(up);
-    bar.appendChild(down);
-    bar.appendChild(note);
-
-    // Put directly under the last assistant text block
-    lastTextEl.insertAdjacentElement("afterend", bar);
-  }
+  let lastData = { question: "", answer: "", traceId: "" };
 
   Chatbot.initFull({
     chatflowid: "18d7b8e4-c497-4dfa-8610-bc0cac7762ad",
     apiHost: "https://noor-flowise-cloud-production.up.railway.app",
-
-    theme: {
-      chatWindow: {
-        showTitle: true,
-        title: "Noot_Testpilot_Feb26",
-        welcomeMessage: "Welcome to Noor. Ask what’s on your mind.",
-        backgroundColor: "#f7f5f2",
-        fontSize: 16,
-
-        // Keep this here if Flowise ever starts rendering native feedback in embed,
-        // but we are NOT depending on it.
-        feedback: {
-          enabled: true,
-          color: "#1e3a34"
-        },
-
-        starterPrompts: [
-          "What practice today could help soften my heart toward gratitude (shukr)?",
-          "How do I understand 'disease in the heart' (2:10)?",
-          "How can I guide my nafs without harshness?"
-        ]
-      }
-    },
-
     observersConfig: {
       observeMessages: (messages) => {
         const last = messages[messages.length - 1];
-        if (!last) return;
-
-        // Track last user question reliably
-        if (last.type === "userMessage") {
-          latestUserQuestion = last.content || "";
-          return;
-        }
-
-        // When AI responds, attach the simple feedback bar under the new answer
+        if (last.type === "userMessage") lastData.question = last.content;
         if (last.type === "apiMessage") {
-          const answerText = last.content || "";
-          const traceId = last.id || ""; // Flowise message id; you can later map this to LangSmith if needed
-
-          // wait for DOM to render the new bubble
-          setTimeout(() => attachFeedbackBar({ answerText, traceId }), 250);
+          lastData.answer = last.content;
+          lastData.traceId = last.id;
+          // Show the feedback buttons now that we have an answer
+          document.getElementById("feedback-controls").style.display = "block";
+          document.getElementById("status-text").innerText = "Rate the last response:";
         }
       }
     }
   });
+
+  window.sendFeedback = async (rating) => {
+    const comment = prompt("Why this rating? (Optional)");
+    const payload = { ...lastData, rating, comment };
+    
+    // Call your Google App Script
+    await fetch("YOUR_SHEETS_ENDPOINT", {
+      method: "POST",
+      mode: "no-cors", 
+      body: JSON.stringify(payload)
+    });
+
+    document.getElementById("feedback-controls").style.display = "none";
+    document.getElementById("status-text").innerText = "Feedback sent! Continue chatting.";
+  };
 </script>
