@@ -14,11 +14,20 @@
             apiHost: "https://noor-flowise-cloud-production.up.railway.app",
             theme: {
                 chatWindow: {
+                    showTitle: true,
+                    title: "Noor v5.1-Gold",
                     welcomeMessage: "Assalamu Alaikum. I am Noor, a scholarly assistant grounded in the Islamic tradition.",
                     backgroundColor: "#ffffff",
                     fontSize: 16,
-                    showTitle: true,
-                    title: "Noor v5.1-Gold",
+                    starterPrompts: [
+                        "What practice today could help soften and open my heart toward gratitude (shukr)?",
+                        "What does 'sickness in the heart' (2:10) mean in the classical tradition?",
+                        "How can I guide my nafs without harshness or self-blame?"
+                    ],
+                    starterPromptFontSize: 15,
+                    feedback: {
+                        color: '#303235' // This enables the thumbs up/down UI
+                    }
                 }
             }
         })
