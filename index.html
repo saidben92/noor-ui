@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Noor v5.1-Gold | Research Beta</title>
+</head>
+<body style="margin: 0;">
+    <flowise-fullchatbot></flowise-fullchatbot>
+    <script type="module">
+        import Chatbot from "https://cdn.jsdelivr.net/npm/flowise-embed/dist/web.js"
+        Chatbot.initFull({
+            chatflowid: "18d7b8e4-c497-4dfa-8610-bc0cac7762ad",
+            apiHost: "https://noor-flowise-cloud-production.up.railway.app",
+            theme: {
+                chatWindow: {
+                    welcomeMessage: "Assalamu Alaikum. I am Noor, a scholarly assistant grounded in the Islamic tradition.",
+                    backgroundColor: "#ffffff",
+                    fontSize: 16,
+                    showTitle: true,
+                    title: "Noor v5.1-Gold",
+                }
+            }
+        })
+    </script>
+</body>
+</html>
